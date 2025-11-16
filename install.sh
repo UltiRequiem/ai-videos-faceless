@@ -42,7 +42,7 @@ uv pip install -e .
 
 # Download NLTK data
 echo "📚 Downloading NLTK data..."
-python -c "import nltk; nltk.download('punkt', quiet=True)"
+python -c "import nltk; nltk.download('punkt_tab', quiet=True)"
 
 # Check if .env file exists
 if [ ! -f .env ]; then

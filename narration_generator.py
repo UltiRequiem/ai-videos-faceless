@@ -95,10 +95,10 @@ class NarrationImageGenerator:
 
         # Check if NLTK data is available
         try:
-            nltk.data.find('tokenizers/punkt')
+            nltk.data.find('tokenizers/punkt_tab')
         except LookupError:
             console.print("📦 Downloading NLTK data...", style="yellow")
-            nltk.download('punkt', quiet=True)
+            nltk.download('punkt_tab', quiet=True)
 
         self.logger.info(f"Initialized generator for script: {self.script_path}")
 

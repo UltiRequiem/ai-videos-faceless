@@ -37,7 +37,7 @@ for narration scripts using the Pexels API and OpenAI for keyword generation.
 
 3. **Download NLTK data** (required for text processing)
    ```bash
-   python -c "import nltk; nltk.download('punkt')"
+   python -c "import nltk; nltk.download('punkt_tab')"
    ```
 
 4. **Configure API keys**
@@ -112,7 +112,7 @@ MAX_SCENE_SENTENCES=10      # Maximum sentences per scene
 
 2. **NLTK data missing**: Download required data
    ```bash
-   python -c "import nltk; nltk.download('punkt')"
+   python -c "import nltk; nltk.download('punkt_tab')"
    ```
 
 3. **API rate limits**: Wait a moment between large requests
