@@ -49,7 +49,6 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 class NarrationImageGenerator:
     """Main class for generating images from narration scripts."""
 
-    # Class-level type annotations (no values assigned here)
     script_path: Path
     script_name: str
     output_dir: Path
@@ -63,10 +62,8 @@ class NarrationImageGenerator:
         self.output_dir = Path("output") / self.script_name
         self.use_nested_dirs = use_nested_dirs
 
-        # Setup logging
         self.setup_logging()
 
-        # Validate inputs
         self.validate_setup()
 
     def setup_logging(self) -> None:
@@ -82,6 +79,7 @@ class NarrationImageGenerator:
                 logging.FileHandler(log_dir / f"{self.script_name}.log")
             ]
         )
+
         self.logger = logging.getLogger(__name__)
 
     def validate_setup(self) -> None:
@@ -109,7 +107,6 @@ class NarrationImageGenerator:
             with open(self.script_path, 'r', encoding='utf-8') as f:
                 content = f.read()
 
-            # Clean the content
             content = re.sub(r'\[Scene[^\]]*\]', '', content)  # Remove scene directions
             content = re.sub(r'#{1,6}\s+', '', content)  # Remove markdown headers
             content = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', content)  # Remove markdown emphasis
@@ -118,6 +115,7 @@ class NarrationImageGenerator:
             content = content.strip()
 
             self.logger.info(f"Loaded script with {len(content)} characters")
+
             return content
 
         except Exception as e:
@@ -126,6 +124,7 @@ class NarrationImageGenerator:
 
     def split_into_scenes(self, content: str) -> list[dict[str, any]]:
         """Split the script content into scenes with 3-10 sentences each."""
+
         sentences = sent_tokenize(content)
         scenes = []
         current_scene = []
@@ -170,6 +169,7 @@ class NarrationImageGenerator:
 
     def _is_scene_boundary(self, sentence: str) -> bool:
         """Determine if a sentence marks a natural scene boundary."""
+
         boundary_indicators = [
             'fast forward', 'years later', 'meanwhile', 'now here\'s',
             'let me take you', 'now imagine', 'picture this',
@@ -181,12 +181,16 @@ class NarrationImageGenerator:
 
     def generate_keywords(self, scene_text: str) -> list[str]:
         """Generate 3-6 relevant keywords for a scene."""
+
         if openai_client:
             return self._generate_keywords_openai(scene_text)
         else:
             return self._generate_keywords_simple(scene_text)
 
     def _generate_keywords_openai(self, scene_text: str) -> list[str]:
+        if not openai_client:
+            raise ValueError("OpenAI client is not initialized.")
+
         """Generate keywords using OpenAI API."""
         try:
             prompt = f"""
@@ -209,7 +213,6 @@ class NarrationImageGenerator:
             keywords_text = response.choices[0].message.content.strip()
             keywords = [kw.strip() for kw in keywords_text.split(',') if kw.strip()]
 
-            # Ensure we have 3-6 keywords
             keywords = keywords[:6] if len(keywords) > 6 else keywords
             if len(keywords) < 3:
                 keywords.extend(self._generate_keywords_simple(scene_text)[:3-len(keywords)])
@@ -222,6 +225,7 @@ class NarrationImageGenerator:
 
     def _generate_keywords_simple(self, scene_text: str) -> list[str]:
         """Generate keywords using simple text analysis."""
+
         # Common visual nouns that make good search terms
         visual_words = [
             'office', 'business', 'person', 'man', 'woman', 'building', 'city',
