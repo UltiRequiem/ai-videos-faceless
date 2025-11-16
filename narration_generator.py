@@ -9,16 +9,16 @@ Usage:
     python narration_generator.py script.txt
 """
 
+from __future__ import annotations
+
 import argparse
 import logging
 import os
 import re
 import sys
-from pathlib import Path
-from typing import List, Dict, Optional, Tuple
 import time
-import urllib.parse
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 
 import requests
 from dotenv import load_dotenv
@@ -28,33 +28,33 @@ from nltk.tokenize import sent_tokenize
 from PIL import Image
 from pathvalidate import sanitize_filename
 from rich.console import Console
-from rich.progress import Progress, TaskID
+from rich.progress import Progress
 from rich.logging import RichHandler
-import click
 
-# Load environment variables
-load_dotenv()
+_ = load_dotenv()
 
-# Initialize rich console for beautiful output
 console = Console()
 
-# Configuration
 PEXELS_API_KEY = os.getenv('PEXELS_API_KEY')
 OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 DEFAULT_IMAGES_PER_SCENE = int(os.getenv('DEFAULT_IMAGES_PER_SCENE', '4'))
 MIN_SCENE_SENTENCES = int(os.getenv('MIN_SCENE_SENTENCES', '3'))
 MAX_SCENE_SENTENCES = int(os.getenv('MAX_SCENE_SENTENCES', '10'))
 
-# API Endpoints
 PEXELS_SEARCH_URL = "https://api.pexels.com/v1/search"
 PEXELS_HEADERS = {"Authorization": PEXELS_API_KEY}
 
-# Initialize OpenAI client if API key is available
 openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
-
 
 class NarrationImageGenerator:
     """Main class for generating images from narration scripts."""
+
+    # Class-level type annotations (no values assigned here)
+    script_path: Path
+    script_name: str
+    output_dir: Path
+    use_nested_dirs: bool
+    logger: logging.Logger
 
     def __init__(self, script_path: str, use_nested_dirs: bool = False):
         """Initialize the generator with a script path."""
@@ -124,7 +124,7 @@ class NarrationImageGenerator:
             console.print(f"❌ Error loading script: {e}", style="red")
             sys.exit(1)
 
-    def split_into_scenes(self, content: str) -> List[Dict[str, any]]:
+    def split_into_scenes(self, content: str) -> list[dict[str, any]]:
         """Split the script content into scenes with 3-10 sentences each."""
         sentences = sent_tokenize(content)
         scenes = []
@@ -179,14 +179,14 @@ class NarrationImageGenerator:
         sentence_lower = sentence.lower()
         return any(indicator in sentence_lower for indicator in boundary_indicators)
 
-    def generate_keywords(self, scene_text: str) -> List[str]:
+    def generate_keywords(self, scene_text: str) -> list[str]:
         """Generate 3-6 relevant keywords for a scene."""
         if openai_client:
             return self._generate_keywords_openai(scene_text)
         else:
             return self._generate_keywords_simple(scene_text)
 
-    def _generate_keywords_openai(self, scene_text: str) -> List[str]:
+    def _generate_keywords_openai(self, scene_text: str) -> list[str]:
         """Generate keywords using OpenAI API."""
         try:
             prompt = f"""
@@ -220,7 +220,7 @@ class NarrationImageGenerator:
             self.logger.warning(f"OpenAI keyword generation failed: {e}")
             return self._generate_keywords_simple(scene_text)
 
-    def _generate_keywords_simple(self, scene_text: str) -> List[str]:
+    def _generate_keywords_simple(self, scene_text: str) -> list[str]:
         """Generate keywords using simple text analysis."""
         # Common visual nouns that make good search terms
         visual_words = [
@@ -241,7 +241,7 @@ class NarrationImageGenerator:
 
         return found_keywords[:6]
 
-    def download_images_for_scene(self, scene: Dict, keywords: List[str]) -> List[str]:
+    def download_images_for_scene(self, scene: dict, keywords: list[str]) -> list[str]:
         """Download 3-5 high-resolution images for a scene."""
         if self.use_nested_dirs:
             # Original nested structure
@@ -279,7 +279,7 @@ class NarrationImageGenerator:
 
         return downloaded_images
 
-    def _search_and_download_image(self, keyword: str, scene_dir: Path, image_number: int, scene_number: int = 0, prefix: str = "") -> Optional[str]:
+    def _search_and_download_image(self, keyword: str, scene_dir: Path, image_number: int, scene_number: int = 0, prefix: str = "") -> str | None:
         """Search for and download a single image."""
         try:
             # Search for images
@@ -333,7 +333,7 @@ class NarrationImageGenerator:
             self.logger.error(f"Error in _search_and_download_image for '{keyword}': {e}")
             return None
 
-    def save_keywords(self, scene_dir: Path, keywords: List[str], scene_number: int = 0) -> None:
+    def save_keywords(self, scene_dir: Path, keywords: list[str], scene_number: int = 0) -> None:
         """Save keywords to a text file in the scene directory."""
         if self.use_nested_dirs:
             # Nested: keywords.txt in each scene folder

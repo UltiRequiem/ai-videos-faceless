@@ -16,19 +16,21 @@ for narration scripts using the Pexels API and OpenAI for keyword generation.
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - macOS (tested on macOS 14+)
 - uv (install with: `curl -LsSf https://astral.sh/uv/install.sh | sh`)
 
 ### Setup
 
 1. **Clone or download the project**
+
    ```bash
    git clone <repository-url>
    cd images-faceless
    ```
 
 2. **Install dependencies with uv**
+
    ```bash
    uv venv
    source .venv/bin/activate
@@ -36,6 +38,7 @@ for narration scripts using the Pexels API and OpenAI for keyword generation.
    ```
 
 3. **Download NLTK data** (required for text processing)
+
    ```bash
    python -c "import nltk; nltk.download('punkt_tab')"
    ```
@@ -108,8 +111,9 @@ Let me take you back to 1857, to a young bookkeeper in Cleveland named John D. R
 
 ## API Keys Required
 
-- **Pexels API**: Get free API key at https://www.pexels.com/api/
-- **OpenAI API**: Get API key at https://platform.openai.com/api-keys (optional)
+- **Pexels API**: Get free API key at <https://www.pexels.com/api/>
+- **OpenAI API**: Get API key at <https://platform.openai.com/api-keys>
+  (optional)
 
 ## Configuration
 
@@ -121,21 +125,56 @@ MIN_SCENE_SENTENCES=3       # Minimum sentences per scene
 MAX_SCENE_SENTENCES=10      # Maximum sentences per scene
 ```
 
+## Development
+
+### Code Quality
+
+This project uses modern Python tooling for code quality:
+
+```bash
+# Install development dependencies
+uv sync --dev
+
+# Run linting and formatting (fixes issues automatically)
+./scripts/lint.sh
+
+# Check code quality without making changes
+./scripts/check.sh
+
+# Manual commands
+uv run ruff check .           # Lint code
+uv run ruff format .          # Format code
+uv run mypy narration_generator.py --ignore-missing-imports  # Type checking
+```
+
+### CI/CD
+
+GitHub Actions automatically:
+
+- ✅ Runs Ruff linting and formatting checks
+- ✅ Performs MyPy type checking
+- ✅ Runs security scans with Trivy
+- ✅ Tests imports and functionality
+
 ## Troubleshooting
 
 ### Common Issues
 
 1. **Permission denied**: Ensure script has execute permissions
+
    ```bash
    chmod +x narration_generator.py
    ```
 
 2. **NLTK data missing**: Download required data
+
    ```bash
    python -c "import nltk; nltk.download('punkt_tab')"
    ```
 
 3. **API rate limits**: Wait a moment between large requests
+
+4. **Ruff errors**: Run `./scripts/lint.sh` to auto-fix most issues
 
 ## License
 
