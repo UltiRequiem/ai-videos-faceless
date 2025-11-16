@@ -56,11 +56,12 @@ openai_client = OpenAI(api_key=OPENAI_API_KEY) if OPENAI_API_KEY else None
 class NarrationImageGenerator:
     """Main class for generating images from narration scripts."""
 
-    def __init__(self, script_path: str):
+    def __init__(self, script_path: str, use_nested_dirs: bool = False):
         """Initialize the generator with a script path."""
         self.script_path = Path(script_path)
         self.script_name = sanitize_filename(self.script_path.stem)
         self.output_dir = Path("output") / self.script_name
+        self.use_nested_dirs = use_nested_dirs
 
         # Setup logging
         self.setup_logging()
@@ -242,8 +243,16 @@ class NarrationImageGenerator:
 
     def download_images_for_scene(self, scene: Dict, keywords: List[str]) -> List[str]:
         """Download 3-5 high-resolution images for a scene."""
-        scene_dir = self.output_dir / scene['folder']
-        scene_dir.mkdir(parents=True, exist_ok=True)
+        if self.use_nested_dirs:
+            # Original nested structure
+            scene_dir = self.output_dir / scene['folder']
+            scene_dir.mkdir(parents=True, exist_ok=True)
+            image_prefix = ""
+        else:
+            # Flat structure - all images in root output directory
+            scene_dir = self.output_dir
+            scene_dir.mkdir(parents=True, exist_ok=True)
+            image_prefix = f"scene_{scene['number']:02d}_"
 
         downloaded_images = []
 
@@ -252,7 +261,7 @@ class NarrationImageGenerator:
             future_to_keyword = {}
             for i, keyword in enumerate(keywords[:DEFAULT_IMAGES_PER_SCENE]):
                 future = executor.submit(self._search_and_download_image,
-                                       keyword, scene_dir, i+1)
+                                       keyword, scene_dir, i+1, scene['number'], image_prefix)
                 future_to_keyword[future] = keyword
 
             # Collect results
@@ -270,7 +279,7 @@ class NarrationImageGenerator:
 
         return downloaded_images
 
-    def _search_and_download_image(self, keyword: str, scene_dir: Path, image_number: int) -> Optional[str]:
+    def _search_and_download_image(self, keyword: str, scene_dir: Path, image_number: int, scene_number: int = 0, prefix: str = "") -> Optional[str]:
         """Search for and download a single image."""
         try:
             # Search for images
@@ -297,8 +306,14 @@ class NarrationImageGenerator:
             img_response = requests.get(image_url, timeout=30)
             img_response.raise_for_status()
 
-            # Save the image
-            image_filename = f"image_{image_number:02d}.jpg"
+            # Save the image with appropriate filename
+            if prefix:
+                # Flat structure: scene_01_image_01.jpg
+                image_filename = f"{prefix}image_{image_number:02d}.jpg"
+            else:
+                # Nested structure: image_01.jpg
+                image_filename = f"image_{image_number:02d}.jpg"
+
             image_path = scene_dir / image_filename
 
             with open(image_path, 'wb') as f:
@@ -318,9 +333,15 @@ class NarrationImageGenerator:
             self.logger.error(f"Error in _search_and_download_image for '{keyword}': {e}")
             return None
 
-    def save_keywords(self, scene_dir: Path, keywords: List[str]) -> None:
+    def save_keywords(self, scene_dir: Path, keywords: List[str], scene_number: int = 0) -> None:
         """Save keywords to a text file in the scene directory."""
-        keywords_file = scene_dir / "keywords.txt"
+        if self.use_nested_dirs:
+            # Nested: keywords.txt in each scene folder
+            keywords_file = scene_dir / "keywords.txt"
+        else:
+            # Flat: scene_01_keywords.txt in root
+            keywords_file = scene_dir / f"scene_{scene_number:02d}_keywords.txt"
+
         with open(keywords_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(keywords))
 
@@ -347,12 +368,13 @@ class NarrationImageGenerator:
                 keywords = self.generate_keywords(scene['text'])
                 console.print(f"🔑 Keywords: {', '.join(keywords)}", style="blue")
 
-                # Create scene directory
-                scene_dir = self.output_dir / scene['folder']
-                scene_dir.mkdir(parents=True, exist_ok=True)
-
-                # Save keywords
-                self.save_keywords(scene_dir, keywords)
+                # Save keywords (handles both flat and nested structure)
+                if self.use_nested_dirs:
+                    scene_dir = self.output_dir / scene['folder']
+                    scene_dir.mkdir(parents=True, exist_ok=True)
+                    self.save_keywords(scene_dir, keywords, scene['number'])
+                else:
+                    self.save_keywords(self.output_dir, keywords, scene['number'])
 
                 # Download images
                 console.print(f"📸 Downloading images...", style="yellow")
@@ -369,6 +391,12 @@ class NarrationImageGenerator:
         # Summary
         console.print(f"\n🎉 All done! Generated images for {len(scenes)} scenes", style="bold green")
         console.print(f"📁 Output directory: {self.output_dir.absolute()}", style="blue")
+
+        if self.use_nested_dirs:
+            console.print(f"📂 Structure: Nested folders (scene_01/, scene_02/, etc.)", style="cyan")
+        else:
+            console.print(f"📂 Structure: Flat directory (all images at same level)", style="cyan")
+
         console.print(f"💡 Ready to import into CapCut!", style="bold yellow")
 
 
@@ -394,6 +422,12 @@ Output:
     )
 
     parser.add_argument(
+        '--nested',
+        action='store_true',
+        help='Use nested directory structure (scene_01/, scene_02/, etc.). Default is flat structure.'
+    )
+
+    parser.add_argument(
         '--version',
         action='version',
         version='Narration Image Generator 1.0.0'
@@ -402,7 +436,7 @@ Output:
     args = parser.parse_args()
 
     try:
-        generator = NarrationImageGenerator(args.script_path)
+        generator = NarrationImageGenerator(args.script_path, use_nested_dirs=args.nested)
         generator.generate_all_images()
 
     except KeyboardInterrupt:

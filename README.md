@@ -50,30 +50,50 @@ for narration scripts using the Pexels API and OpenAI for keyword generation.
 ### Basic Usage
 
 ```bash
+# Default: Flat structure (all images at same level)
 python narration_generator.py path/to/your/script.txt
+
+# Use nested folders structure
+python narration_generator.py --nested path/to/your/script.txt
 ```
 
-### Example
+### Examples
 
 ```bash
+# Flat structure (default) - best for CapCut
 python narration_generator.py examples/discipline_perception.txt
+
+# Nested structure (original behavior)
+python narration_generator.py --nested examples/discipline_perception.txt
 ```
 
-### Output Structure
+### Output Structures
+
+**Default - Flat Structure (Recommended for CapCut):**
 
 ```
-output/
-└── discipline_perception/
-    ├── scene_01/
-    │   ├── keywords.txt
-    │   ├── image_01.jpg
-    │   ├── image_02.jpg
-    │   └── ...
-    ├── scene_02/
-    │   ├── keywords.txt
-    │   ├── image_01.jpg
-    │   └── ...
-    └── ...
+output/discipline_perception/
+├── scene_01_keywords.txt
+├── scene_01_image_01.jpg
+├── scene_01_image_02.jpg
+├── scene_02_keywords.txt
+├── scene_02_image_01.jpg
+├── scene_02_image_02.jpg
+└── ...
+```
+
+**Nested Structure (--nested flag):**
+
+```
+output/discipline_perception/
+├── scene_01/
+│   ├── keywords.txt
+│   ├── image_01.jpg
+│   └── image_02.jpg
+├── scene_02/
+│   ├── keywords.txt
+│   └── image_01.jpg
+└── ...
 ```
 
 ## Example Input
