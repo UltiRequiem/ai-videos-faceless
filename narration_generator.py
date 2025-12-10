@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Narration Image Generator CLI Tool
 
@@ -323,12 +324,11 @@ class NarrationImageGenerator:
             with open(image_path, 'wb') as f:
                 f.write(img_response.content)
 
-            # Verify image is valid
             try:
                 with Image.open(image_path) as img:
                     img.verify()
             except Exception:
-                image_path.unlink()  # Delete invalid image
+                image_path.unlink()  
                 return None
 
             return str(image_path)
@@ -340,39 +340,30 @@ class NarrationImageGenerator:
     def save_keywords(self, scene_dir: Path, keywords: list[str], scene_number: int = 0) -> None:
         """Save keywords to a text file in the scene directory."""
         if self.use_nested_dirs:
-            # Nested: keywords.txt in each scene folder
             keywords_file = scene_dir / "keywords.txt"
         else:
-            # Flat: scene_01_keywords.txt in root
             keywords_file = scene_dir / f"scene_{scene_number:02d}_keywords.txt"
 
         with open(keywords_file, 'w', encoding='utf-8') as f:
             f.write('\n'.join(keywords))
 
-    def generate_all_images(self) -> None:
-        """Main method to process the entire script and generate all images."""
-        console.print(f"🎬 Processing script: {self.script_path}", style="bold blue")
+    def generate_all_keywords(self, scenes: list[dict[str, any]]) -> list[dict[str, any]]:
+        """Generate keywords for all scenes in batch."""
+        console.print("\n🔑 Generating keywords for all scenes...", style="bold blue")
 
-        # Load and process script
-        content = self.load_script()
-        scenes = self.split_into_scenes(content)
-
-        # Create output directory
-        self.output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Process each scene
         with Progress() as progress:
-            task = progress.add_task("Processing scenes...", total=len(scenes))
+            task = progress.add_task("Generating keywords...", total=len(scenes))
 
             for scene in scenes:
-                console.print(f"\n📋 Scene {scene['number']}: {scene['sentences']} sentences",
-                            style="bold cyan")
+                console.print(f"📋 Scene {scene['number']}: {scene['sentences']} sentences", style="cyan")
 
                 # Generate keywords
                 keywords = self.generate_keywords(scene['text'])
-                console.print(f"🔑 Keywords: {', '.join(keywords)}", style="blue")
+                scene['keywords'] = keywords
 
-                # Save keywords (handles both flat and nested structure)
+                console.print(f"  🔑 Keywords: {', '.join(keywords)}", style="blue")
+
+                # Save keywords to file
                 if self.use_nested_dirs:
                     scene_dir = self.output_dir / scene['folder']
                     scene_dir.mkdir(parents=True, exist_ok=True)
@@ -380,19 +371,54 @@ class NarrationImageGenerator:
                 else:
                     self.save_keywords(self.output_dir, keywords, scene['number'])
 
-                # Download images
-                console.print(f"📸 Downloading images...", style="yellow")
-                downloaded_images = self.download_images_for_scene(scene, keywords)
-
-                console.print(f"✅ Scene {scene['number']} complete: {len(downloaded_images)} images",
-                            style="bold green")
-
                 progress.update(task, advance=1)
 
-                # Rate limiting - be respectful to APIs
+                # Small delay for OpenAI API rate limiting
+                time.sleep(0.2)
+
+        console.print("✅ All keywords generated!", style="bold green")
+        return scenes
+
+    def download_all_images(self, scenes: list[dict[str, any]]) -> None:
+        """Download images for all scenes in batch."""
+        console.print("\n📸 Downloading images for all scenes...", style="bold blue")
+
+        # Count total images to download
+        total_images = len(scenes) * DEFAULT_IMAGES_PER_SCENE
+        console.print(f"📊 Planning to download ~{total_images} images total", style="yellow")
+
+        with Progress() as progress:
+            task = progress.add_task("Downloading images...", total=len(scenes))
+
+            for scene in scenes:
+                console.print(f"\n🎬 Scene {scene['number']}: Downloading {DEFAULT_IMAGES_PER_SCENE} images", style="cyan")
+
+                # Download images for this scene
+                downloaded_images = self.download_images_for_scene(scene, scene['keywords'])
+
+                console.print(f"  ✅ Downloaded {len(downloaded_images)} images", style="green")
+                progress.update(task, advance=1)
+
+                # Rate limiting for Pexels API
                 time.sleep(0.5)
 
-        # Summary
+        console.print("✅ All images downloaded!", style="bold green")
+
+    def generate_all_images(self) -> None:
+        """Main method to process the entire script and generate all images."""
+        console.print(f"🎬 Processing script: {self.script_path}", style="bold blue")
+
+        content = self.load_script()
+        scenes = self.split_into_scenes(content)
+
+        self.output_dir.mkdir(parents=True, exist_ok=True)
+
+        console.print(f"📊 Found {len(scenes)} scenes to process", style="yellow")
+
+        scenes_with_keywords = self.generate_all_keywords(scenes)
+
+        self.download_all_images(scenes_with_keywords)
+
         console.print(f"\n🎉 All done! Generated images for {len(scenes)} scenes", style="bold green")
         console.print(f"📁 Output directory: {self.output_dir.absolute()}", style="blue")
 
